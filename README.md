@@ -23,10 +23,10 @@ This course teaches you to write code that *provably* works.
 │                    THE APPROACH                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│   Problem  ──►  Math Model  ──►  Proof  ──►  Structs       │
+│   Problem  ──►  Math Model  ──►  Proof  ──►  Structs        │
 │                                                │            │
 │                                                ▼            │
-│                           Verification  ◄──  Code          │
+│                           Verification  ◄──  Code           │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
