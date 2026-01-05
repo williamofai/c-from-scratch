@@ -1,0 +1,27 @@
+# Build artifacts
+*.o
+*.a
+*.so
+*.exe
+build/
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+core
+*.dSYM/
+
+# Test artifacts
+*.gcov
+*.gcda
+*.gcno
+coverage/
