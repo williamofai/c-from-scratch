@@ -538,3 +538,7 @@ If we wanted to add "time since last heartbeat" as a queryable value, what would
 In **Lesson 4: Code**, we'll implement `hb_init` and `hb_step`. You'll see that with the struct properly designed and the math proven, the code practically writes itself—each line is a direct transcription of a mathematical statement.
 
 *"The code is just the math, wearing a different costume."*
+
+---
+
+[Previous: Lesson 2 — Mathematical Closure](../02-mathematical-closure/LESSON.md) | [Next: Lesson 4 — Code](../04-code/LESSON.md)
