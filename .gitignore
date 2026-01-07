@@ -25,3 +25,4 @@ core
 *.gcda
 *.gcno
 coverage/
+*.tar.gz
