@@ -42,7 +42,7 @@ A tiny, provably-correct state machine that answers: *"Is this process alive?"*
 - 5 lessons from problem definition to hardened code
 - ~200 lines of C with mathematical proofs
 - Handles clock wrap, faults, and edge cases
-- Zero dependencies beyond libc
+- Zero dependencies beyond the Standard C library (libc)
 
 **Contracts proven:** Soundness, Liveness, Stability
 
