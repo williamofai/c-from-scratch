@@ -1,0 +1,9 @@
+build/
+*.o
+*.a
+*.so
+*.swp
+*.swo
+*~
+.DS_Store
+*.tar.gz
