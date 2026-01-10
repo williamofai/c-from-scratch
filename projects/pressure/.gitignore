@@ -1,0 +1,33 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+
+# Executables
+pressure
+test_contracts
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug
+*.dSYM/
+core
+vgcore.*
+
+# Temporary
+*.tmp
+*.log
+
+# Archives
+*.tar.gz
+*.zip
