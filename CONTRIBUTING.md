@@ -1,41 +1,52 @@
-# Contributing to C-From-Scratch
+# Contributing to c-from-scratch
 
 Thank you for your interest in contributing!
 
 ## Philosophy
 
-This is an educational repository. Contributions should:
+This is an educational repository for safety-critical C programming. Contributions should:
 
 1. **Maintain rigour** — No hand-waving. Proofs matter.
 2. **Preserve clarity** — Beginner-friendly explanations
 3. **Follow the method** — Math → Structs → Code
 
-## Current Modules
+## Current Status
 
-| Module | Status | Tests |
-|--------|--------|-------|
-| Pulse | Complete | All passing |
-| Baseline | Complete | 18/18 passing |
-| Composition | Planned | — |
+### Foundation Modules (Complete)
+
+| Module | Question | Tests | Status |
+|--------|----------|-------|--------|
+| Pulse | Does it exist? | ✓ | Complete |
+| Baseline | Is it normal? | 18/18 | Complete |
+| Timing | Is it regular? | ✓ | Complete |
+| Drift | Is it trending? | 15/15 | Complete |
+| Consensus | Which to trust? | 17/17 | Complete |
+| Pressure | Handle overflow? | 16/16 | Complete |
+
+### Also Available
+
+- **Integration Example** — All 6 modules working together
+- **SPEC.md** — Framework specification
 
 ## What We Need
 
 ### High Priority
 - Typo fixes and clarifications
-- Additional exercises
-- Test cases for edge conditions
+- Additional test cases for edge conditions
+- Platform-specific build instructions (Windows, macOS)
 - Translations (if you're fluent)
 
 ### Medium Priority
-- Additional projects following the same methodology
 - Improved diagrams and visualisations
-- Platform-specific build instructions
+- Additional exercises per module
+- Real-world application examples
+- Performance benchmarks
 
 ### Discussions Welcome
-- Alternative approaches to proofs
+- Alternative mathematical approaches
 - Additional failure mode analysis
 - Real-world war stories
-- Ideas for Module 3 (Composition)
+- Ideas for Module 7+ (State Machine? Scheduler?)
 
 ## How to Contribute
 
@@ -50,65 +61,95 @@ This is an educational repository. Contributions should:
 3. Follow the existing style and structure
 
 ### New Modules
-New modules should follow the established pattern:
+
+New modules must follow the established pattern:
 
 ```
-projects/your-module/
+projects/module-name/
 ├── include/
 │   └── module.h          # API + contracts in comments
 ├── src/
 │   ├── module.c          # Implementation
-│   └── main.c            # Demo
+│   └── main.c            # Demo program
 ├── tests/
 │   └── test_module.c     # Contract + invariant tests
 ├── lessons/
-│   ├── 01-the-problem/   # Why this matters
-│   ├── 02-math-model/    # Formal specification
-│   ├── 03-structs/       # Data encoding
-│   ├── 04-code/          # Implementation walkthrough
-│   └── 05-testing/       # Proof harness
+│   ├── 01-the-problem/
+│   │   └── LESSON.md     # Why this matters
+│   ├── 02-mathematical-model/
+│   │   └── LESSON.md     # Formal specification
+│   ├── 03-structs/
+│   │   └── LESSON.md     # Data encoding
+│   ├── 04-code/
+│   │   └── LESSON.md     # Implementation walkthrough
+│   ├── 05-testing/
+│   │   └── LESSON.md     # Proof harness
+│   └── 06-composition/
+│       └── LESSON.md     # Integration with other modules
 ├── Makefile
-└── README.md
+├── README.md
+└── .gitignore
 ```
+
+See [SPEC.md](./SPEC.md) for complete requirements.
 
 ## Style Guidelines
 
-### Markdown
-- One sentence per line (easier diffs)
-- Use ATX headers (`#`, `##`, etc.)
-- Code blocks with language specifier
-
 ### C Code
-- C11 standard (previously C99)
+
+```makefile
+CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2
+```
+
+- C11 standard
 - `snake_case` for functions and variables
 - `UPPER_CASE` for constants and enums
 - Comments explain *why*, not *what*
 - Every function must be **total** (defined for all inputs)
 
 ### Naming Conventions
+
 Follow the module pattern:
-- Pulse: `hb_init`, `hb_step`, `hb_state`, `hb_faulted`
-- Baseline: `base_init`, `base_step`, `base_state`, `base_faulted`
+```c
+module_init()      // Initialise
+module_update()    // Step the FSM
+module_state()     // Query current state (inline)
+module_reset()     // Reset to initial
+```
+
+### Forbidden Constructs
+
+| Construct | Reason |
+|-----------|--------|
+| `malloc` / `free` | Non-deterministic timing |
+| Recursion | Unbounded stack |
+| Global variables | Hidden state |
+| `goto` | Unstructured control flow |
 
 ### Struct Design
+
 - Every field must trace to a mathematical requirement
-- Derived values belong in result structs, not state
 - Configuration is immutable after init
 - Faults are sticky until explicit reset
+- Derived values belong in result structs, not state
+
+### Markdown
+
+- One sentence per line (easier diffs)
+- Use ATX headers (`#`, `##`, etc.)
+- Code blocks with language specifier
 
 ### Commit Messages
-- Present tense ("Add feature" not "Added feature")
-- First line under 50 characters
-- Reference issues when applicable
 
-Example:
+Present tense, first line under 50 characters:
+
 ```
-Add Module 2: Baseline statistical normality monitor
+Add Module 7: Scheduler - Deterministic Task Dispatch
 
-- Closed, total, deterministic FSM for anomaly detection
-- Four proven contracts: Convergence, Sensitivity, Stability, Spike Resistance
-- 18/18 contract and invariant tests passing
-- Six lessons from problem statement to composition
+- Closed, total, deterministic FSM
+- Priority-based with deadline awareness
+- N/N contract tests passing
+- Six lessons from problem to composition
 ```
 
 ## Testing Standards
@@ -116,14 +157,26 @@ Add Module 2: Baseline statistical normality monitor
 Every module needs:
 
 1. **Contract tests** — One test per proven contract
-2. **Invariant tests** — Verify structural guarantees hold
-3. **Fuzz tests** — Random input, check invariants
-4. **Edge case tests** — Zero, overflow, NaN, reset
+2. **Invariant tests** — Verify structural guarantees
+3. **Edge case tests** — Zero, overflow, NaN, reset
+4. **Fuzz tests** — Random input, 100,000+ iterations
 
-Tests should print clear pass/fail with contract names:
+Test output format:
 ```
-[PASS] CONTRACT-1: Convergence (error=0.0263)
-[PASS] CONTRACT-4: Spike Resistance (Shift=90.00, Max=90.00)
+╔════════════════════════════════════════════════════════════════╗
+║           MODULE Contract Test Suite                           ║
+╚════════════════════════════════════════════════════════════════╝
+
+Contract Tests:
+  [PASS] CONTRACT-1: Description
+  [PASS] CONTRACT-2: Description
+
+Fuzz Tests:
+  [PASS] Fuzz: 100000 random inputs, invariants held
+
+══════════════════════════════════════════════════════════════════
+  Results: N/N tests passed
+══════════════════════════════════════════════════════════════════
 ```
 
 ## Code of Conduct
@@ -135,3 +188,7 @@ This is a learning environment. Questions are welcome, no matter how basic.
 ## Questions?
 
 Open an issue with the "question" label.
+
+---
+
+> *"Math → Structs → Code"*
