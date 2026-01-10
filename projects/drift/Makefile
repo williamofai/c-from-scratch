@@ -8,8 +8,8 @@
 #   make clean    - Remove build artifacts
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2
-CFLAGS_DEBUG = -Wall -Wextra -pedantic -std=c11 -g -O0
+CFLAGS = -Wall -Wextra -Werror -pedantic -std=c99 -O2
+CFLAGS_DEBUG = -Wall -Wextra -pedantic -std=c99 -g -O0
 
 # Directories
 SRC_DIR = src

@@ -7,7 +7,7 @@
 #   make clean    - Remove build artifacts
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2
+CFLAGS = -Wall -Wextra -Werror -pedantic -std=c99 -O2
 LDFLAGS = -lm
 
 SRC_DIR = src

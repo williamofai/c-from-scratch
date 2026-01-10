@@ -2,7 +2,7 @@
 # The "Captain" of the safety-critical ship
 
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2
+CFLAGS = -Wall -Wextra -Werror -pedantic -std=c99 -O2
 INCLUDES = -Iinclude
 
 SRC_DIR = src
