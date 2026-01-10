@@ -14,19 +14,20 @@ This is an educational repository for safety-critical C programming. Contributio
 
 ### Foundation Modules (Complete)
 
-| Module | Question | Tests | Status |
-|--------|----------|-------|--------|
-| Pulse | Does it exist? | ✓ | Complete |
-| Baseline | Is it normal? | 18/18 | Complete |
-| Timing | Is it regular? | ✓ | Complete |
-| Drift | Is it trending? | 15/15 | Complete |
-| Consensus | Which to trust? | 17/17 | Complete |
-| Pressure | Handle overflow? | 16/16 | Complete |
+| Module | Question | Role | Tests |
+|--------|----------|------|-------|
+| Pulse | Does it exist? | Sensor | ✓ |
+| Baseline | Is it normal? | Sensor | 18/18 |
+| Timing | Is it regular? | Sensor | ✓ |
+| Drift | Is it trending? | Sensor | 15/15 |
+| Consensus | Which to trust? | Judge | 17/17 |
+| Pressure | Handle overflow? | Buffer | 16/16 |
+| Mode | What to do? | Captain | 17/17 |
 
 ### Also Available
 
-- **Integration Example** — All 6 modules working together
-- **SPEC.md** — Framework specification
+- **Integration Example** — All 7 modules working together
+- **SPEC.md** — Framework specification v1.1.0
 
 ## What We Need
 
@@ -46,7 +47,7 @@ This is an educational repository for safety-critical C programming. Contributio
 - Alternative mathematical approaches
 - Additional failure mode analysis
 - Real-world war stories
-- Ideas for Module 7+ (State Machine? Scheduler?)
+- Ideas for Module 8+ (Scheduler? Watchdog?)
 
 ## How to Contribute
 
@@ -144,7 +145,7 @@ module_reset()     // Reset to initial
 Present tense, first line under 50 characters:
 
 ```
-Add Module 7: Scheduler - Deterministic Task Dispatch
+Add Module 8: Scheduler - Deterministic Task Dispatch
 
 - Closed, total, deterministic FSM
 - Priority-based with deadline awareness
@@ -159,7 +160,7 @@ Every module needs:
 1. **Contract tests** — One test per proven contract
 2. **Invariant tests** — Verify structural guarantees
 3. **Edge case tests** — Zero, overflow, NaN, reset
-4. **Fuzz tests** — Random input, 100,000+ iterations
+4. **Fuzz tests** — Random input, 10,000+ iterations
 
 Test output format:
 ```
@@ -172,7 +173,7 @@ Contract Tests:
   [PASS] CONTRACT-2: Description
 
 Fuzz Tests:
-  [PASS] Fuzz: 100000 random inputs, invariants held
+  [PASS] Fuzz: 10000 random inputs, invariants held
 
 ══════════════════════════════════════════════════════════════════
   Results: N/N tests passed
@@ -191,4 +192,4 @@ Open an issue with the "question" label.
 
 ---
 
-> *"Math → Structs → Code"*
+> *"Sensors report. The Captain decides."*

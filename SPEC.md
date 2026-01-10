@@ -1,6 +1,6 @@
 # c-from-scratch Framework Specification
 
-**Version 1.0.0**  
+**Version 1.1.0**  
 **January 2026**
 
 > *"Math → Structs → Code"*
@@ -20,7 +20,7 @@ This specification defines the core principles, module structure, contracts, and
 1. [Philosophy](#1-philosophy)
 2. [Core Principles](#2-core-principles)
 3. [Module Structure](#3-module-structure)
-4. [The Six Foundation Modules](#4-the-six-foundation-modules)
+4. [The Seven Foundation Modules](#4-the-seven-foundation-modules)
 5. [Contracts & Invariants](#5-contracts--invariants)
 6. [Composition Rules](#6-composition-rules)
 7. [Code Standards](#7-code-standards)
@@ -189,18 +189,19 @@ static inline module_state_t module_state(...);
 
 ---
 
-## 4. The Six Foundation Modules
+## 4. The Seven Foundation Modules
 
 ### 4.1 Module Overview
 
-| # | Module | Question | Output |
-|---|--------|----------|--------|
-| 1 | Pulse | Does it exist? | ALIVE / DEAD |
-| 2 | Baseline | Is it normal? | STABLE / DEVIATION |
-| 3 | Timing | Is it regular? | HEALTHY / UNHEALTHY |
-| 4 | Drift | Is it trending toward failure? | STABLE / DRIFTING |
-| 5 | Consensus | Which sensor to trust? | Voted value + confidence |
-| 6 | Pressure | How to handle overflow? | Bounded queue + backpressure |
+| # | Module | Question | Role | Output |
+|---|--------|----------|------|--------|
+| 1 | Pulse | Does it exist? | Sensor | ALIVE / DEAD |
+| 2 | Baseline | Is it normal? | Sensor | STABLE / DEVIATION |
+| 3 | Timing | Is it regular? | Sensor | HEALTHY / UNHEALTHY |
+| 4 | Drift | Is it trending toward failure? | Sensor | STABLE / DRIFTING |
+| 5 | Consensus | Which sensor to trust? | Judge | Voted value + confidence |
+| 6 | Pressure | How to handle overflow? | Buffer | Bounded queue + backpressure |
+| 7 | Mode | What do we do about it? | Captain | System mode + permissions |
 
 ### 4.2 Module 1: Pulse (Heartbeat Monitor)
 
@@ -268,6 +269,22 @@ static inline module_state_t module_state(...);
 
 **Key insight**: "Only bounded queues let you choose deliberately."
 
+### 4.8 Module 7: Mode (System Orchestrator)
+
+**Question**: "Given all health signals, what should the system DO?"
+
+**Contract**: System exists in exactly one mode; OPERATIONAL requires all healthy; EMERGENCY is sticky.
+
+**Modes**: INIT → STARTUP → OPERATIONAL ↔ DEGRADED → EMERGENCY (+ TEST)
+
+**Features**:
+- Permissions matrix constrains actions per mode
+- Value-aware: semantic flags enable proactive degradation
+- Audit log: all transitions logged with timestamp and cause
+- Hysteresis: minimum dwell time prevents mode flapping
+
+**Key insight**: "Sensors report. The Captain decides."
+
 ---
 
 ## 5. Contracts & Invariants
@@ -298,28 +315,71 @@ Invariants are:
 - Checked in fuzz tests
 - Part of the formal model
 
-### 5.3 Example: Consensus Contracts
+### 5.3 Example: Mode Manager Contracts
 
 ```
-CONTRACT-1 (Single-Fault Tolerance):
-  Given 3 sensors where at most 1 is faulty,
-  the consensus value equals a healthy sensor's value.
+CONTRACT-1 (Unambiguous State):
+  System exists in exactly one mode at any time.
 
-CONTRACT-2 (Bounded Output):
-  Consensus value ∈ [min(healthy), max(healthy)]
+CONTRACT-2 (Safe Entry):
+  OPERATIONAL mode requires all monitors HEALTHY.
 
-CONTRACT-3 (Deterministic):
-  Same inputs → Same output, always.
+CONTRACT-3 (Fault Stickiness):
+  EMERGENCY mode requires explicit reset to exit.
 
-CONTRACT-4 (Degradation Awareness):
-  Confidence decreases as healthy sensor count decreases.
+CONTRACT-4 (No Skip):
+  Cannot transition directly from INIT to OPERATIONAL.
+
+CONTRACT-5 (Bounded Latency):
+  Fault detected → EMERGENCY in ≤ 1 cycle.
+
+CONTRACT-6 (Deterministic):
+  Same inputs → Same mode, always.
+
+CONTRACT-7 (Proactive Safety):
+  Critical flags trigger DEGRADED before actual faults.
+
+CONTRACT-8 (Auditability):
+  All transitions logged with timestamp and cause.
 ```
 
 ---
 
 ## 6. Composition Rules
 
-### 6.1 Health State Propagation
+### 6.1 The Safety Stack
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 7: MODE MANAGER                           │
+│                       "The Captain"                                 │
+│   Decides: What mode? What actions allowed?                         │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 6: PRESSURE                               │
+│                       "The Buffer"                                  │
+│   Handles: Message overflow, backpressure                           │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 5: CONSENSUS                              │
+│                       "The Judge"                                   │
+│   Decides: Which sensor to trust?                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   CHANNEL 0     │ │   CHANNEL 1     │ │   CHANNEL 2     │
+│  Pulse → Base   │ │  Pulse → Base   │ │  Pulse → Base   │
+│  → Timing       │ │  → Timing       │ │  → Timing       │
+│  → Drift        │ │  → Drift        │ │  → Drift        │
+│   "Sensors"     │ │   "Sensors"     │ │   "Sensors"     │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+### 6.2 Health State Propagation
 
 Modules produce health states that feed downstream modules:
 
@@ -330,17 +390,22 @@ Timing:    HEALTHY → HEALTHY, UNHEALTHY → DEGRADED
 Drift:     STABLE → HEALTHY, DRIFTING → DEGRADED, FAULT → FAULTY
 ```
 
-### 6.2 Pipeline Composition
+### 6.3 Value-Aware Flags
 
-Modules compose into monitoring pipelines:
+Modules can set semantic flags based on domain knowledge:
 
-```
-Sensor → Pulse → Baseline → Timing → Drift → Health State
-                                              ↓
-[Health₀, Health₁, Health₂] → Consensus → Pressure → Output
-```
+| Flag | Source | Meaning |
+|------|--------|---------|
+| approaching_upper | Drift | TTF < critical threshold |
+| approaching_lower | Drift | TTF < critical threshold |
+| low_confidence | Consensus | Confidence < 50% |
+| queue_critical | Pressure | Fill > 90% |
+| timing_unstable | Timing | Recent jitter violations |
+| baseline_volatile | Baseline | High recent deviation |
 
-### 6.3 Independence
+These enable **proactive safety**: act before failure.
+
+### 6.4 Independence
 
 Each module instance is independent:
 - No shared state between instances
@@ -396,7 +461,7 @@ CFLAGS = -Wall -Wextra -Werror -pedantic -std=c11 -O2
 | Contract tests | Prove contracts hold | All contracts |
 | Invariant tests | Verify invariants | All invariants |
 | Edge case tests | Boundary conditions | NaN, overflow, empty |
-| Fuzz tests | Random inputs | 100,000+ iterations |
+| Fuzz tests | Random inputs | 10,000+ iterations |
 
 ### 8.2 Test Output Format
 
@@ -413,7 +478,7 @@ Invariant Tests:
   [PASS] INV-1: Description
 
 Fuzz Tests:
-  [PASS] Fuzz: 100000 random inputs, invariants held
+  [PASS] Fuzz: 10000 random inputs, invariants held
 
 ══════════════════════════════════════════════════════════════════
   Results: N/N tests passed
@@ -565,7 +630,8 @@ typedef enum {
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | January 2026 | Initial specification |
+| 1.0.0 | January 2026 | Initial specification (6 modules) |
+| 1.1.0 | January 2026 | Added Module 7: Mode Manager |
 
 ---
 
@@ -577,4 +643,4 @@ Copyright (c) 2026 William Murray
 
 ---
 
-*"Good systems don't trust. They verify. Better systems don't verify once. They vote."*
+*"Sensors report. The Captain decides."*

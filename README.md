@@ -31,121 +31,82 @@ This course teaches you to write code that *provably* works.
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## The Six Foundation Modules
+## The Seven Foundation Modules
 
-| Module | Question | Tests | Status |
-|--------|----------|-------|--------|
-| [Pulse](./projects/pulse/) | Does it exist? | ✓ | Complete |
-| [Baseline](./projects/baseline/) | Is it normal? | 18/18 | Complete |
-| [Timing](./projects/timing/) | Is it regular? | ✓ | Complete |
-| [Drift](./projects/drift/) | Is it trending toward failure? | 15/15 | Complete |
-| [Consensus](./projects/consensus/) | Which sensor to trust? | 17/17 | Complete |
-| [Pressure](./projects/pressure/) | How to handle overflow? | 16/16 | Complete |
+| Module | Question | Role | Tests |
+|--------|----------|------|-------|
+| [Pulse](./projects/pulse/) | Does it exist? | Sensor | ✓ |
+| [Baseline](./projects/baseline/) | Is it normal? | Sensor | 18/18 |
+| [Timing](./projects/timing/) | Is it regular? | Sensor | ✓ |
+| [Drift](./projects/drift/) | Is it trending toward failure? | Sensor | 15/15 |
+| [Consensus](./projects/consensus/) | Which sensor to trust? | Judge | 17/17 |
+| [Pressure](./projects/pressure/) | How to handle overflow? | Buffer | 16/16 |
+| [Mode](./projects/mode/) | What do we do about it? | Captain | 17/17 |
 
-Plus: [Integration Example](./projects/integration/) — All 6 modules working together.
+Plus: [Integration Example](./projects/integration/) — All modules working together.
+
+---
+
+## The Safety Stack
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 7: MODE MANAGER                           │
+│                       "The Captain"                                 │
+│   Decides: What mode? What actions allowed?                         │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 6: PRESSURE                               │
+│                       "The Buffer"                                  │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODULE 5: CONSENSUS                              │
+│                       "The Judge"                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                              ↑
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│   CHANNEL 0     │ │   CHANNEL 1     │ │   CHANNEL 2     │
+│  Pulse → Base   │ │  Pulse → Base   │ │  Pulse → Base   │
+│  → Timing       │ │  → Timing       │ │  → Timing       │
+│  → Drift        │ │  → Drift        │ │  → Drift        │
+│   "Sensors"     │ │   "Sensors"     │ │   "Sensors"     │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
 
 ---
 
 ## Module Overview
 
-### Module 1: Pulse — Heartbeat Liveness Monitor
+### Modules 1-4: The Sensors
 
-*"Does something exist in time?"*
+| Module | Question | Key Insight |
+|--------|----------|-------------|
+| **Pulse** | Is it alive? | Existence must be proven continuously |
+| **Baseline** | Is it normal? | "Normal" must be learned, not assumed |
+| **Timing** | Is it regular? | Jitter indicates system stress |
+| **Drift** | Is it trending? | "Temperature is normal but rising too fast" |
 
-A tiny, provably-correct state machine that answers: *"Is this process alive?"*
+### Module 5: The Judge
 
-**Contracts:** Soundness, Liveness, Stability
-
----
-
-### Module 2: Baseline — Statistical Normality Monitor
-
-*"Is what's happening normal?"*
-
-EMA-based anomaly detection with O(1) memory.
-
-**Contracts:** Convergence, Sensitivity, Stability, Spike Resistance
-
----
-
-### Module 3: Timing — Regularity Monitor
-
-*"Are events arriving on schedule?"*
-
-Detects timing jitter and missed deadlines.
-
-**Contracts:** Jitter detection within tolerance
-
----
-
-### Module 4: Drift — Rate & Trend Detection
-
-*"Is the value moving toward failure?"*
-
-Damped derivative via EMA of slope. Catches "temperature is normal but rising too fast."
-
-**Contracts:** Bounded slope, Noise immunity, TTF accuracy, Spike resistance
-
----
-
-### Module 5: Consensus — Triple Modular Redundancy
-
-*"Which of three sensors should we trust?"*
-
-Mid-value selection (median) for Byzantine fault tolerance.
-
-**Contracts:** Single-fault tolerance, Bounded output, Deterministic, Degradation awareness
+**Consensus** — Triple Modular Redundancy voting.
 
 > *"With THREE clocks, we can outvote the liar."*
 
----
+### Module 6: The Buffer
 
-### Module 6: Pressure — Bounded Queue with Backpressure
-
-*"What do we do when messages arrive faster than we can process?"*
-
-Ring buffer with three overflow policies: REJECT, DROP_OLDEST, DROP_NEWEST.
-
-**Contracts:** Bounded memory, No data loss, FIFO ordering, Pressure signal accuracy
+**Pressure** — Bounded queue with backpressure.
 
 > *"Only bounded queues let you choose deliberately."*
 
----
+### Module 7: The Captain
 
-## Integration Example
+**Mode** — System orchestrator with permissions matrix.
 
-All six modules composing into a complete safety monitoring system:
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        SAFETY MONITOR                               │
-│                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
-│  │  SENSOR 0    │  │  SENSOR 1    │  │  SENSOR 2    │               │
-│  │ Pulse→Base   │  │ Pulse→Base   │  │ Pulse→Base   │               │
-│  │ →Timing      │  │ →Timing      │  │ →Timing      │               │
-│  │ →Drift       │  │ →Drift       │  │ →Drift       │               │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
-│         └─────────────────┼─────────────────┘                       │
-│                           ▼                                         │
-│                    ┌──────────────┐                                 │
-│                    │  CONSENSUS   │  (TMR voting)                   │
-│                    └──────┬───────┘                                 │
-│                           ▼                                         │
-│                    ┌──────────────┐                                 │
-│                    │   PRESSURE   │  (bounded queue)                │
-│                    └──────┬───────┘                                 │
-│                           ▼                                         │
-│                        OUTPUT                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-**Result:** 0.2% error despite Byzantine sensor fault and complete sensor failure.
-
-```bash
-cd projects/integration
-make run
-```
+> *"Sensors report. The Captain decides."*
 
 ---
 
@@ -221,4 +182,4 @@ MIT — See [LICENSE](./LICENSE)
 
 ---
 
-> *"Good systems don't trust. They verify. Better systems don't verify once. They vote."*
+> *"Sensors report. The Captain decides."*
