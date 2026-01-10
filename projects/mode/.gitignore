@@ -1,0 +1,16 @@
+# Build artifacts
+build/
+*.o
+*.a
+
+# Executables
+mode_demo
+test_mode
+
+# Editor
+*.swp
+*~
+.vscode/
+
+# OS
+.DS_Store
