@@ -17,13 +17,13 @@
  *---------------------------------------------------------------------------*/
 
 /** Modular age computation: (now - then) mod 2^64 */
-static inline uint64_t age_u64(uint64_t now, uint64_t then)
+static uint64_t age_u64(uint64_t now, uint64_t then)
 {
     return (uint64_t)(now - then);
 }
 
 /** Half-range rule: valid if age < 2^63 */
-static inline uint8_t age_valid(uint64_t age)
+static uint8_t age_valid(uint64_t age)
 {
     return (age < (1ULL << 63));
 }
@@ -46,6 +46,19 @@ void hb_init(hb_fsm_t *m, uint64_t now)
 void hb_step(hb_fsm_t *m, uint64_t now, uint8_t hb_seen,
              uint64_t T, uint64_t W)
 {
+    /*-----------------------------------------------------------------------
+     * CONTRACT-4: Fault is sticky — once faulted, stay DEAD
+     * 
+     * This enforces INV-3: (fault_time ∨ fault_reentry) → (st == DEAD)
+     * 
+     * Recovery requires explicit hb_init() call after investigating
+     * the root cause of the fault.
+     *-----------------------------------------------------------------------*/
+    if (m->fault_time || m->fault_reentry) {
+        m->st = STATE_DEAD;
+        return;  /* No recovery without hb_init() */
+    }
+
     /* Reentrancy check — CONTRACT enforcement */
     if (m->in_step) {
         m->fault_reentry = 1;

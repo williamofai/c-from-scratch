@@ -8,11 +8,21 @@
  *   1. SOUNDNESS:  Never report ALIVE if actually dead
  *   2. LIVENESS:   Eventually report DEAD if heartbeats stop
  *   3. STABILITY:  No spurious transitions
+ *   4. FAULT-STICKY: Once faulted, stay DEAD until reset
  * 
  * REQUIREMENTS:
  *   - Single-writer access (caller must ensure)
  *   - Monotonic time source (caller provides)
  *   - Polling at bounded intervals (caller ensures)
+ * 
+ * THREAD SAFETY:
+ *   This module is NOT thread-safe. The reentrancy guard detects
+ *   recursive calls from the SAME thread (e.g., signal handlers),
+ *   not concurrent access from multiple threads.
+ * 
+ *   For multi-threaded use, the caller must provide external
+ *   synchronisation (mutex, spinlock, etc.) around all calls
+ *   to hb_step() on the same hb_fsm_t instance.
  * 
  * See: lessons/02-mathematical-closure/LESSON.md for proofs
  *      lessons/03-structs/LESSON.md for data dictionary
@@ -45,6 +55,10 @@ typedef enum {
  *   INV-2: (st == ALIVE) → (have_hb == 1)
  *   INV-3: (fault_time ∨ fault_reentry) → (st == DEAD)
  *   INV-4: (in_step == 0) when not executing hb_step
+ * 
+ * NOTE: Faults are "sticky" — once fault_time or fault_reentry
+ *       is set, the FSM remains in STATE_DEAD until hb_init()
+ *       is called to reset it.
  */
 typedef struct {
     state_t  st;            /* Current state ∈ S                    */
@@ -59,6 +73,9 @@ typedef struct {
 /**
  * Initialise the state machine.
  * 
+ * This resets ALL state including fault flags. Use this to
+ * recover from a faulted state after investigating the cause.
+ * 
  * @param m   Pointer to state machine structure
  * @param now Current timestamp from monotonic source
  */
@@ -66,6 +83,10 @@ void hb_init(hb_fsm_t *m, uint64_t now);
 
 /**
  * Execute one atomic step of the state machine.
+ * 
+ * NOTE: If the FSM is in a faulted state (fault_time or
+ *       fault_reentry set), this function will keep the
+ *       state as STATE_DEAD. Call hb_init() to reset.
  * 
  * @param m       Pointer to initialised state machine
  * @param now     Current timestamp

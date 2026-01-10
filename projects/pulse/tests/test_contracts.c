@@ -1,10 +1,11 @@
 /**
  * test_contracts.c - Contract verification for pulse
  * 
- * Tests verify the three formal contracts:
- *   CONTRACT-1: Soundness  - Never report ALIVE if actually dead
- *   CONTRACT-2: Liveness   - Eventually report DEAD if heartbeats stop
- *   CONTRACT-3: Stability  - No spurious transitions
+ * Tests verify the four formal contracts:
+ *   CONTRACT-1: Soundness     - Never report ALIVE if actually dead
+ *   CONTRACT-2: Liveness      - Eventually report DEAD if heartbeats stop
+ *   CONTRACT-3: Stability     - No spurious transitions
+ *   CONTRACT-4: Fault-Sticky  - Once faulted, stay DEAD until reset
  * 
  * Copyright (c) 2025 William Murray
  * MIT License - https://github.com/williamofai/c-from-scratch
@@ -189,7 +190,7 @@ static void test_contract3_steady_heartbeats(void)
 
 static void test_contract3_recovery(void)
 {
-    TEST("CONTRACT-3: Recovery from DEAD");
+    TEST("CONTRACT-3: Recovery from timeout DEAD");
     
     hb_fsm_t m;
     uint64_t T = 1000;
@@ -198,12 +199,118 @@ static void test_contract3_recovery(void)
     hb_init(&m, 0);
     hb_step(&m, 0, 1, T, W);
     
-    /* Let it go DEAD */
+    /* Let it go DEAD via timeout (not fault) */
     hb_step(&m, T + 1, 0, T, W);
     assert(hb_state(&m) == STATE_DEAD);
+    assert(hb_faulted(&m) == 0);  /* Not faulted, just timed out */
     
-    /* Send heartbeat - should recover */
+    /* Send heartbeat - should recover (timeout is not sticky) */
     hb_step(&m, T + 2, 1, T, W);
+    assert(hb_state(&m) == STATE_ALIVE);
+    verify_invariants(&m);
+    
+    PASS();
+}
+
+/*---------------------------------------------------------------------------
+ * CONTRACT-4: Fault Stickiness Tests
+ *---------------------------------------------------------------------------*/
+static void test_contract4_fault_time_sticky(void)
+{
+    TEST("CONTRACT-4: fault_time is sticky");
+    
+    hb_fsm_t m;
+    uint64_t T = 1000;
+    uint64_t W = 0;
+    
+    hb_init(&m, 1000);
+    hb_step(&m, 1000, 1, T, W);
+    assert(hb_state(&m) == STATE_ALIVE);
+    
+    /* Clock jumps backward — triggers fault_time */
+    hb_step(&m, 500, 0, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    assert(hb_faulted(&m) == 1);
+    assert(m.fault_time == 1);
+    verify_invariants(&m);
+    
+    /* Try to recover with valid heartbeat — should stay DEAD */
+    hb_step(&m, 1005, 1, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    assert(hb_faulted(&m) == 1);
+    verify_invariants(&m);
+    
+    /* Multiple attempts — still DEAD */
+    for (uint64_t t = 1010; t <= 2000; t += 100) {
+        hb_step(&m, t, 1, T, W);
+        assert(hb_state(&m) == STATE_DEAD);
+        verify_invariants(&m);
+    }
+    
+    PASS();
+}
+
+static void test_contract4_fault_reentry_sticky(void)
+{
+    TEST("CONTRACT-4: fault_reentry is sticky");
+    
+    hb_fsm_t m;
+    uint64_t T = 1000;
+    uint64_t W = 0;
+    
+    hb_init(&m, 0);
+    hb_step(&m, 0, 1, T, W);
+    assert(hb_state(&m) == STATE_ALIVE);
+    
+    /* Simulate reentrancy by manually setting in_step */
+    m.in_step = 1;
+    hb_step(&m, 100, 1, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    assert(hb_faulted(&m) == 1);
+    assert(m.fault_reentry == 1);
+    
+    /* Reset in_step for invariant check (simulates what would 
+     * happen if the "outer" call completed) */
+    m.in_step = 0;
+    verify_invariants(&m);
+    
+    /* Try to recover — should stay DEAD due to sticky fault */
+    hb_step(&m, 200, 1, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    verify_invariants(&m);
+    
+    PASS();
+}
+
+static void test_contract4_recovery_requires_init(void)
+{
+    TEST("CONTRACT-4: Recovery requires hb_init()");
+    
+    hb_fsm_t m;
+    uint64_t T = 1000;
+    uint64_t W = 0;
+    
+    hb_init(&m, 1000);
+    hb_step(&m, 1000, 1, T, W);
+    
+    /* Trigger fault */
+    hb_step(&m, 500, 0, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    assert(hb_faulted(&m) == 1);
+    
+    /* Cannot recover with hb_step */
+    hb_step(&m, 1100, 1, T, W);
+    assert(hb_state(&m) == STATE_DEAD);
+    
+    /* hb_init() resets everything */
+    hb_init(&m, 1200);
+    assert(hb_state(&m) == STATE_UNKNOWN);
+    assert(hb_faulted(&m) == 0);
+    assert(m.fault_time == 0);
+    assert(m.fault_reentry == 0);
+    
+    /* Now can become ALIVE again */
+    hb_step(&m, 1200, 1, T, W);
     assert(hb_state(&m) == STATE_ALIVE);
     verify_invariants(&m);
     
@@ -269,7 +376,7 @@ static void test_boundary_T_plus_1(void)
 }
 
 /*---------------------------------------------------------------------------
- * Fault Injection Tests
+ * Fault Injection Tests (Legacy + Extended)
  *---------------------------------------------------------------------------*/
 static void test_fault_clock_backward(void)
 {
@@ -292,6 +399,11 @@ static void test_fault_clock_backward(void)
     assert(hb_faulted(&m) == 1);
     assert(m.fault_time == 1);
     verify_invariants(&m);
+    
+    /* NEW: Verify fault is sticky (cmaglie's test case) */
+    hb_step(&m, 505, 1, T, W);
+    assert(hb_state(&m) == STATE_DEAD);  /* Still DEAD */
+    verify_invariants(&m);  /* INV-3 now holds */
     
     PASS();
 }
@@ -391,6 +503,11 @@ static void test_fuzz(uint64_t iterations)
             assert(age <= T);
             assert(m.have_hb == 1);
         }
+        
+        /* Verify CONTRACT-4: If faulted, must be DEAD */
+        if (hb_faulted(&m)) {
+            assert(hb_state(&m) == STATE_DEAD);
+        }
     }
     
     PASS();
@@ -418,6 +535,11 @@ int main(void)
     printf("\nCONTRACT-3 (Stability) Tests:\n");
     test_contract3_steady_heartbeats();
     test_contract3_recovery();
+
+    printf("\nCONTRACT-4 (Fault-Sticky) Tests:\n");
+    test_contract4_fault_time_sticky();
+    test_contract4_fault_reentry_sticky();
+    test_contract4_recovery_requires_init();
 
     printf("\nBoundary Tests:\n");
     test_boundary_T_minus_1();
